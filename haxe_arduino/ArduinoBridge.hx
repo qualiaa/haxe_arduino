@@ -60,7 +60,6 @@ class ArduinoBridge
             Sys.sleep(1);
         }
         device_.writeBytes("A\n");
-        Sys.sleep(1);
         device_.flush(true);
 
 
