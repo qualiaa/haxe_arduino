@@ -1,4 +1,4 @@
-package;
+package haxe_arduino;
 
 import hxSerial.Serial;
 using Lambda;
