@@ -49,18 +49,21 @@ class ArduinoBridge
         var deviceList = Serial.getDeviceList();
         var usbPath : Null<String>;
 
-        usbPath = deviceList.find(function (path)
-                return path.toLowerCase().indexOf("usb") != -1);
-        trace(usbPath);
+        do {
+            usbPath = deviceList.find(function (path)
+                    return path.toLowerCase().indexOf("usb") != -1);
+            trace(usbPath);
+            sleep(1);
+        }
+        while(usbPath == null);
 
         device_ = new Serial(usbPath, 9600, true);
-        device_.flush(true);
-        while(device_.available() == 0)
-        {
-            Sys.sleep(1);
-        }
+
+        Sys.sleep(1);
+
         device_.writeBytes("A\n");
         device_.flush(true);
+
 
 
         for (i in 0 ... ANALOG_PIN_COUNT)
@@ -75,6 +78,18 @@ class ArduinoBridge
         }
     }
 
+    public function awaitResponse() : Void
+    {
+        var command;
+        do {
+            trace("WAITING");
+            command = readCommand(true);
+            trace("DONE WAITING: " + Lambda.map([for (i in 0...command.length) i], function(s){return command.charCodeAt(s);}));
+        }
+        while(!parseCommand(command));
+        trace("DONE");
+    }
+
     public function sync() : Void
     {
         while (device_.available() > 0)
@@ -84,9 +99,9 @@ class ArduinoBridge
         }
     }
 
-    private function readCommand() : Null<String>
+    private function readCommand(?wait:Bool = false) : Null<String>
     {
-        if (device_.available() == 0) return null;
+        if (device_.available() == 0 && !wait) return null;
 
         var command = "";
         var c : String = "";
@@ -101,18 +116,25 @@ class ArduinoBridge
         return command;
     }
 
-    private function parseCommand(command: String) : Void
+    // Returns: Whether the command was useful (true) or debug (false)
+    private function parseCommand(command: String) : Bool
     {
         trace(command);
         var firstByte = command.charAt(0);
-        if (firstByte == HIGH || firstByte == LOW) {
+        if(firstByte == "A" || firstByte == "\n" || firstByte == "\r") {
+            trace("Treating as useless string");
+            return false;
+        }
+        else if (firstByte == HIGH || firstByte == LOW) {
             var pin = Std.parseInt(command.substring(1));
             digitalValues_[pin] = (firstByte == HIGH) ? true : false;
+            return true;
         } else {
             var indexOfPin = command.indexOf("a");
             var pin = Std.parseInt(command.substring(indexOfPin + 1));
             var value = Std.parseInt(command.substring(0, indexOfPin));
             analogValues_[pin] = value;
+            return true;
         }
     }
 
@@ -159,16 +181,26 @@ class ArduinoBridge
         analogMaxValues_[pin] = maxVal;
     }
 
-    public function readAnalogPinRaw(pin : Int) : Null<Int>
+    public function requestAnalogPin(pin : Int) : Void
     {
         checkPin(ANALOG, pin);
-        sync();
+        sendCommand(READ, [ANALOG, pin]);
+    }
+
+    public function requestDigitalPin(pin : Int) : Void
+    {
+        checkPin(DIGITAL, pin);
+        sendCommand(READ, [DIGITAL, pin]);
+    }
+
+    public function getAnalogPinRaw(pin : Int) : Null<Int>
+    {
         return analogValues_[pin];
     }
 
-    public function readAnalogPin(pin : Int) : Null<Float>
+    public function getAnalogPin(pin : Int) : Null<Float>
     {
-        var rawVal = readAnalogPinRaw(pin);
+        var rawVal = getAnalogPinRaw(pin);
         if (rawVal == null)
         {
             return null;
@@ -176,11 +208,8 @@ class ArduinoBridge
         return Math.min(rawVal / analogMaxValues_[pin], 1);
     }
 
-    public function readDigitalPin(pin : Int) : Null<Bool>
+    public function getDigitalPin(pin : Int) : Null<Bool>
     {
-        checkPin(DIGITAL, pin);
-        sync();
-
         return digitalValues_[pin];
     }
 

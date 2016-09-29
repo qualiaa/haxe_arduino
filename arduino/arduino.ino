@@ -5,6 +5,7 @@
 #define CMD_SET       's'
 #define CMD_MODE      'm'
 #define CMD_READ      'r'
+#define CMD_HANDSHAKE 'A'
 
 #define TYPE_ANALOG   'a'
 #define TYPE_DIGITAL  'd'
@@ -16,6 +17,8 @@
 #define MODE_OUTPUT   'o'
 #define MODE_ACTIVE   '1'
 #define MODE_INACTIVE '0'
+
+#define VERBOSE       false
 
 #define MODE_
 
@@ -40,13 +43,14 @@ void setup() {
         analogPinValues[pin] = 0;
     }
 
-    digitalWrite(13,HIGH);
+    //digitalWrite(13,HIGH);
 
-    establishContact();
+    //establishContact();
 
     digitalWrite(13,LOW);
 }
 
+/*
 void establishContact()
 {
     Serial.print('A');
@@ -60,6 +64,7 @@ void establishContact()
     delay(500);
 
 }
+*/
 
 void setAnalogPinActive(int pin, bool active)
 {
@@ -137,9 +142,12 @@ void receive_commands()
             }
         }
         while (c != '\n');
-        Serial.print("Ard: Got your message: ");
         buffer[p] = '\0';
-        Serial.println(buffer);
+        if(VERBOSE) {
+            Serial.print("Ard: Got your message: ");
+            Serial.print(buffer);
+            endMessage();
+        }
         processCommand(buffer);
     }
 }
@@ -150,39 +158,90 @@ void processCommand(char* command)
     const char action = command[0];
 
     switch (action) {
+        case CMD_HANDSHAKE: {
+            Serial.flush();
+            break;
+        }
+        case CMD_READ: {
+            if(VERBOSE) {
+                Serial.print("Ard: Command is READ");
+                endMessage();
+            }
+
+            const char type = command[2];
+
+            char const* const pinStart = command + 4;
+            char      * const pinEnd = strchr(pinStart,'\n');
+
+
+            const int pin = atoi(pinStart);
+
+            switch(type) {
+                case TYPE_ANALOG: {
+                    sendAnalogPin(pin, analogRead(pin));
+                    break;
+                }
+                case TYPE_DIGITAL: {
+                    sendDigitalPin(pin, digitalRead(pin));
+                    break;
+                }
+                default: return;
+            }
+
+
+            break;
+        }
         case CMD_SET: {
-            Serial.println("Ard: Command is SET");
+            if(VERBOSE) {
+                Serial.print("Ard: Command is SET");
+                endMessage();
+            }
             const char type = command[2];
             char const* const pinStart = command + 4;
             char      * const pinEnd = strchr(pinStart,',');
             *pinEnd = '\0';
             const int pin = atoi(pinStart);
-            Serial.print("Ard: pin is "); Serial.println(pin);
+            if(VERBOSE) {
+                Serial.print("Ard: pin is ");
+                Serial.print(pin);
+                endMessage();
+            }
             if (digitalPinModes[pin] == OUTPUT) {
                 switch(type) {
                     case TYPE_ANALOG: {
                         if (pinIsPwm[pin] == true) {
-                            Serial.print("Ard: PWM ");
                             char const* const valStart = pinEnd+1;
                             char      * const valEnd = strchr(valStart,'\n');
                             *valEnd = '\0';
                             const int val = atoi(valStart);
-                            Serial.print("val is "); Serial.println(val);
+                            if(VERBOSE) {
+                                Serial.print("Ard: PWM ");
+                                Serial.print("val is ");
+                                Serial.print(val);
+                                endMessage();
+                            }
                             analogWrite(pin, val);
                         }
                         break;
                     }
                     case TYPE_DIGITAL: {
                         if (pinIsPwm[pin] == false) {
-                            Serial.print("Ard: digtial ");
-                            Serial.print("val is ");
+                            if(VERBOSE) {
+                                Serial.print("Ard: digtial val is");
+                            }
                             switch (*(pinEnd+1)) {
                                 case SET_HIGH:
-                                    Serial.println("HIGH");
+                                    if(VERBOSE) {
+                                        Serial.print("HIGH");
+                                        endMessage();
+                                    }
                                     digitalWrite(pin, HIGH);
                                     break;
                                 case SET_LOW:
-                                    Serial.println("LOW");
+                                    if(VERBOSE) {
+                                        Serial.print("LOW");
+                                        endMessage();
+                                    }
                                     digitalWrite(pin, LOW);
                                     break;
                                 default: return;
@@ -196,18 +255,28 @@ void processCommand(char* command)
             }
         }
         case CMD_MODE: {
-            Serial.println("Ard: Command is MODE");
+            if(VERBOSE) {
+                Serial.print("Ard: Command is MODE");
+                endMessage();
+            }
             const char type = command[2];
             const char mode = command[4];
             char const* const pinStart = command+6;
             char      * const pinEnd = strchr(pinStart,'\n');
             *pinEnd = '\0';
             const int pin = atoi(pinStart);
-            Serial.print("Ard: Mode is "); Serial.println(mode);
-            Serial.print("Ard: pin is "); Serial.println(pin);
+            if(VERBOSE) {
+                Serial.print("Ard: Mode is "); Serial.print(mode);
+                endMessage();
+                Serial.print("Ard: pin is "); Serial.print(pin);
+                endMessage();
+            }
             switch (type) {
                 case TYPE_DIGITAL: {
-                    Serial.println("Ard: Type is digital");
+                    if(VERBOSE) {
+                        Serial.print("Ard: Type is digital");
+                        endMessage();
+                    }
                     switch (mode) {
                         case MODE_OUTPUT:
                             setDigitalPinMode(pin, OUTPUT);
@@ -217,9 +286,13 @@ void processCommand(char* command)
                             break;
                         default: return;
                     }
+                    break;
                 }
                 case TYPE_ANALOG: {
-                    Serial.println("Ard: Type is analog");
+                    if(VERBOSE) {
+                        Serial.print("Ard: Type is analog");
+                        endMessage();
+                    }
                     switch (mode) {
                         case MODE_ACTIVE:
                             setAnalogPinActive(pin, true);
@@ -229,8 +302,11 @@ void processCommand(char* command)
                             break;
                         default: return;
                     }
+                    break;
                 }
+                default: return;
             }
+            break;
         }
         default: return;
     }
@@ -239,7 +315,7 @@ void processCommand(char* command)
 void loop()
 {
     receive_commands();
-    send_readings();
+    //send_readings();
     delay(16);
     digitalWrite(13, digitalRead(13) == HIGH ? LOW : HIGH);
 }
