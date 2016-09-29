@@ -1,0 +1,11 @@
+{
+    "name"          : "haxe_arduino",
+    "url"           : "https://github.com/qualiaa/haxe_arduino",
+    "license"       : "GPLv3",
+    "tags"          : ["cpp"],
+    "description"   : "A simple library for communicating between haxe and an arduino",
+    "version"       : "1.0.0-alpha",
+    "releasenote"   : "First release, trust nothing and nobody.",
+    "contributors"  : ["qualiaa", "Dixonary"],
+    "dependencies"  : {"hxSerial"}
+}
