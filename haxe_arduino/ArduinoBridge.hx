@@ -53,7 +53,7 @@ class ArduinoBridge
             usbPath = deviceList.find(function (path)
                     return path.toLowerCase().indexOf("usb") != -1);
             trace(usbPath);
-            sleep(1);
+            Sys.sleep(1);
         }
         while(usbPath == null);
 
