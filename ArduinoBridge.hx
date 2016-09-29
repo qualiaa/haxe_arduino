@@ -54,8 +54,12 @@ class ArduinoBridge
         trace(usbPath);
 
         device_ = new Serial(usbPath, 9600, true);
-        while(device_.available() == 0) {}
-        device_.writeBytes("aaaaa");
+        device_.flush(true);
+        while(device_.available() == 0)
+        {
+            Sys.sleep(1);
+        }
+        device_.writeBytes("A\n");
         Sys.sleep(1);
         device_.flush(true);
 
@@ -101,27 +105,15 @@ class ArduinoBridge
     private function parseCommand(command: String) : Void
     {
         trace(command);
-    }
-
-    private function parseBuffer() : Void
-    {
-        var bytesToRead = device_.available();
-        if (bytesToRead < 1) return;
-        var bytes = device_.readBytes(bytesToRead);
-
-        var readings = bytes.split("\n");
-        for (reading in readings)
-        {
-            var firstByte = reading.charAt(0);
-            if (firstByte == HIGH || firstByte == LOW) {
-                var pin = Std.parseInt(reading.substring(1));
-                digitalValues_[pin] = (firstByte == HIGH) ? true : false;
-            } else {
-                var indexOfPin = reading.indexOf("a");
-                var pin = Std.parseInt(reading.substring(indexOfPin + 1));
-                var value = Std.parseInt(reading.substring(0, indexOfPin));
-                analogValues_[pin] = value;
-            }
+        var firstByte = command.charAt(0);
+        if (firstByte == HIGH || firstByte == LOW) {
+            var pin = Std.parseInt(command.substring(1));
+            digitalValues_[pin] = (firstByte == HIGH) ? true : false;
+        } else {
+            var indexOfPin = command.indexOf("a");
+            var pin = Std.parseInt(command.substring(indexOfPin + 1));
+            var value = Std.parseInt(command.substring(0, indexOfPin));
+            analogValues_[pin] = value;
         }
     }
 

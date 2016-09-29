@@ -49,14 +49,14 @@ void setup() {
 
 void establishContact()
 {
+    Serial.print('A');
     while(!Serial.available()) {
-        Serial.print('A');
-        delay(300);
+        delay(1000);
     }
 
     delay(1000);
-    char b[5];
-    Serial.readBytes(b,5);
+    char b[2];
+    Serial.readBytes(b,2);
     delay(500);
 
 }
