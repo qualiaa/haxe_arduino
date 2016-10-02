@@ -153,7 +153,7 @@ class ArduinoBridge
     {
         if (pinIsPwm_[pin])
         {
-            setPwmPin(pin, 255);
+            setPwmPin(pin, setting==HIGH?255:0);
         }
         else
         {
